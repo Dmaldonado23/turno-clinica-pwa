@@ -3,7 +3,7 @@
  * Soporte 100% Offline (Cache-First) y Notificaciones Web Push (iOS 16.4+)
  */
 
-const CACHE_NAME = 'clinica-pwa-v1';
+const CACHE_NAME = 'clinica-pwa-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

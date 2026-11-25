@@ -219,37 +219,100 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- MODAL: REGISTRO MANUAL                    -->
+  <!-- MODAL: REGISTRO MANUAL / RETROACTIVO      -->
   <!-- ========================================== -->
   <div id="manual-entry-modal" class="modal-overlay">
     <div class="modal-sheet">
       <div class="modal-header">
-        <h3>Nuevo Registro Manual</h3>
+        <h3>Ingreso de Jornada Manual / Retroactiva</h3>
         <button class="btn-icon btn-close-modal">✕</button>
       </div>
+
+      <!-- Selector de Modo de Carga -->
       <div class="form-group">
-        <label>Tipo de Evento</label>
-        <select id="manual-type" class="form-control">
-          <option value="ENTRY">Entrada</option>
-          <option value="EXIT">Salida</option>
+        <label>Modalidad de Carga</label>
+        <select id="manual-mode" class="form-control">
+          <option value="FULL_SHIFT" selected>Turno Completo (Entrada + Salida en 1 paso)</option>
+          <option value="DATE_RANGE">Carga Masiva por Rango (ej: 11 nov a hoy)</option>
+          <option value="SINGLE_EVENT">Evento Suelto (Solo Entrada o Solo Salida)</option>
         </select>
       </div>
-      <div class="flex-row">
-        <div class="form-group" style="flex: 1;">
-          <label>Fecha</label>
-          <input type="date" id="manual-date" class="form-control">
+
+      <!-- Sección: Turno Completo (1 Día) -->
+      <div id="section-full-shift">
+        <div class="form-group">
+          <label>Fecha de la Jornada</label>
+          <input type="date" id="manual-shift-date" class="form-control">
         </div>
-        <div class="form-group" style="flex: 1;">
-          <label>Hora</label>
-          <input type="time" id="manual-time" class="form-control">
+        <div class="flex-row">
+          <div class="form-group" style="flex: 1;">
+            <label>Hora Entrada</label>
+            <input type="time" id="manual-shift-in" value="08:00" class="form-control">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>Hora Salida</label>
+            <input type="time" id="manual-shift-out" value="17:00" class="form-control">
+          </div>
         </div>
       </div>
+
+      <!-- Sección: Carga Masiva por Rango de Días -->
+      <div id="section-date-range" style="display: none;">
+        <div class="flex-row">
+          <div class="form-group" style="flex: 1;">
+            <label>Fecha Desde</label>
+            <input type="date" id="manual-range-start" value="2026-11-11" class="form-control">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>Fecha Hasta</label>
+            <input type="date" id="manual-range-end" class="form-control">
+          </div>
+        </div>
+        <div class="flex-row">
+          <div class="form-group" style="flex: 1;">
+            <label>Hora Entrada Habitual</label>
+            <input type="time" id="manual-range-in" value="08:00" class="form-control">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>Hora Salida Habitual</label>
+            <input type="time" id="manual-range-out" value="17:00" class="form-control">
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+          <input type="checkbox" id="manual-range-skip-weekends" checked style="width: 18px; height: 18px;">
+          <label for="manual-range-skip-weekends" style="font-size: 13px; font-weight: 500;">Excluir sábados y domingos</label>
+        </div>
+      </div>
+
+      <!-- Sección: Evento Único -->
+      <div id="section-single-event" style="display: none;">
+        <div class="form-group">
+          <label>Tipo de Evento</label>
+          <select id="manual-type" class="form-control">
+            <option value="ENTRY">Entrada</option>
+            <option value="EXIT">Salida</option>
+          </select>
+        </div>
+        <div class="flex-row">
+          <div class="form-group" style="flex: 1;">
+            <label>Fecha</label>
+            <input type="date" id="manual-date" class="form-control">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>Hora</label>
+            <input type="time" id="manual-time" class="form-control">
+          </div>
+        </div>
+      </div>
+
+      <!-- Motivo Obligatorio para Auditoría -->
       <div class="form-group">
         <label>Motivo Obligatorio (Auditoría) *</label>
-        <input type="text" id="manual-reason" placeholder="Ej: Olvido al llegar de urgencia médica" class="form-control">
-        <p class="form-help">Este motivo quedará asentado permanentemente en la bitácora de auditoría.</p>
+        <input type="text" id="manual-reason" placeholder="Ej: Carga retroactiva inicio de labores 11 de noviembre" class="form-control">
+        <p class="form-help">Quedará registrado formalmente en la bitácora de auditoría.</p>
       </div>
-      <button id="btn-save-manual" class="btn btn-primary btn-block mt-4">Guardar Registro</button>
+
+      <button id="btn-save-manual" class="btn btn-primary btn-block mt-4">Guardar en Bóveda</button>
     </div>
   </div>
 

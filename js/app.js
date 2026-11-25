@@ -452,40 +452,157 @@ class AppController {
   openManualEntryModal() {
     const modal = document.getElementById('manual-entry-modal');
     const now = new Date();
-    document.getElementById('manual-date').value = WorkCalculator.getLocalDateKey(now.getTime());
+    const todayStr = WorkCalculator.getLocalDateKey(now.getTime());
+
+    document.getElementById('manual-mode').value = 'FULL_SHIFT';
+    this.updateManualEntryModeUI('FULL_SHIFT');
+
+    document.getElementById('manual-shift-date').value = todayStr;
+    document.getElementById('manual-shift-in').value = '08:00';
+    document.getElementById('manual-shift-out').value = '17:00';
+
+    document.getElementById('manual-range-start').value = '2026-11-11';
+    document.getElementById('manual-range-end').value = todayStr;
+    document.getElementById('manual-range-in').value = '08:00';
+    document.getElementById('manual-range-out').value = '17:00';
+
+    document.getElementById('manual-date').value = todayStr;
     document.getElementById('manual-time').value = now.toTimeString().substring(0, 5);
     document.getElementById('manual-reason').value = '';
     modal.classList.add('active');
   }
 
+  updateManualEntryModeUI(mode) {
+    document.getElementById('section-full-shift').style.display = mode === 'FULL_SHIFT' ? 'block' : 'none';
+    document.getElementById('section-date-range').style.display = mode === 'DATE_RANGE' ? 'block' : 'none';
+    document.getElementById('section-single-event').style.display = mode === 'SINGLE_EVENT' ? 'block' : 'none';
+  }
+
   async saveManualEntry() {
-    const type = document.getElementById('manual-type').value;
-    const dateStr = document.getElementById('manual-date').value;
-    const timeStr = document.getElementById('manual-time').value;
+    const mode = document.getElementById('manual-mode').value;
     const reason = document.getElementById('manual-reason').value;
 
     if (!reason || reason.trim().length < 5) {
-      alert('Debes ingresar un motivo obligatorio de al menos 5 caracteres.');
+      alert('Debes ingresar un motivo obligatorio de al menos 5 caracteres (para auditoría).');
       return;
     }
 
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const dateObj = new Date(year, month - 1, day, hours, minutes, 0);
+    if (mode === 'FULL_SHIFT') {
+      const dateStr = document.getElementById('manual-shift-date').value;
+      const timeInStr = document.getElementById('manual-shift-in').value;
+      const timeOutStr = document.getElementById('manual-shift-out').value;
 
-    await window.secureStorage.addRecord({
-      type,
-      timestamp: dateObj.getTime(),
-      payload: {
-        lat: null,
-        lng: null,
-        distanceMeters: null,
-        inClinicRadius: false,
-        note: `Registro manual: ${reason.trim()}`
-      },
-      source: 'MANUAL',
-      reason: reason.trim()
-    });
+      if (!dateStr || !timeInStr || !timeOutStr) {
+        alert('Por favor completa la fecha, hora de entrada y hora de salida.');
+        return;
+      }
+
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [hIn, mIn] = timeInStr.split(':').map(Number);
+      const [hOut, mOut] = timeOutStr.split(':').map(Number);
+
+      const dIn = new Date(year, month - 1, day, hIn, mIn, 0);
+      let dOut = new Date(year, month - 1, day, hOut, mOut, 0);
+      if (dOut <= dIn) {
+        // Cruza medianoche
+        dOut = new Date(year, month - 1, day + 1, hOut, mOut, 0);
+      }
+
+      await window.secureStorage.addRecord({
+        type: 'ENTRY',
+        timestamp: dIn.getTime(),
+        payload: { lat: null, lng: null, distanceMeters: null, inClinicRadius: false, note: `Entrada manual: ${reason.trim()}` },
+        source: 'MANUAL',
+        reason: reason.trim()
+      });
+
+      await window.secureStorage.addRecord({
+        type: 'EXIT',
+        timestamp: dOut.getTime(),
+        payload: { lat: null, lng: null, distanceMeters: null, inClinicRadius: false, note: `Salida manual: ${reason.trim()}` },
+        source: 'MANUAL',
+        reason: reason.trim()
+      });
+
+    } else if (mode === 'DATE_RANGE') {
+      const startStr = document.getElementById('manual-range-start').value;
+      const endStr = document.getElementById('manual-range-end').value;
+      const timeInStr = document.getElementById('manual-range-in').value;
+      const timeOutStr = document.getElementById('manual-range-out').value;
+      const skipWeekends = document.getElementById('manual-range-skip-weekends').checked;
+
+      if (!startStr || !endStr) {
+        alert('Ingresa fecha inicial y final del período.');
+        return;
+      }
+
+      const [sY, sM, sD] = startStr.split('-').map(Number);
+      const [eY, eM, eD] = endStr.split('-').map(Number);
+      const cur = new Date(sY, sM - 1, sD);
+      const end = new Date(eY, eM - 1, eD);
+
+      if (cur > end) {
+        alert('La fecha inicial debe ser anterior o igual a la fecha final.');
+        return;
+      }
+
+      const [hIn, mIn] = timeInStr.split(':').map(Number);
+      const [hOut, mOut] = timeOutStr.split(':').map(Number);
+
+      let createdDays = 0;
+      while (cur <= end) {
+        const dayOfWeek = cur.getDay(); // 0 Dom, 6 Sab
+        if (!skipWeekends || (dayOfWeek !== 0 && dayOfWeek !== 6)) {
+          const y = cur.getFullYear();
+          const m = cur.getMonth();
+          const d = cur.getDate();
+
+          const dIn = new Date(y, m, d, hIn, mIn, 0);
+          let dOut = new Date(y, m, d, hOut, mOut, 0);
+          if (dOut <= dIn) {
+            dOut = new Date(y, m, d + 1, hOut, mOut, 0);
+          }
+
+          await window.secureStorage.addRecord({
+            type: 'ENTRY',
+            timestamp: dIn.getTime(),
+            payload: { lat: null, lng: null, distanceMeters: null, inClinicRadius: false, note: `Entrada retroactiva: ${reason.trim()}` },
+            source: 'MANUAL',
+            reason: reason.trim()
+          });
+
+          await window.secureStorage.addRecord({
+            type: 'EXIT',
+            timestamp: dOut.getTime(),
+            payload: { lat: null, lng: null, distanceMeters: null, inClinicRadius: false, note: `Salida retroactiva: ${reason.trim()}` },
+            source: 'MANUAL',
+            reason: reason.trim()
+          });
+          createdDays++;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      alert(`Se crearon exitosamente ${createdDays} jornadas laborales retroactivas.`);
+
+    } else {
+      // SINGLE_EVENT
+      const type = document.getElementById('manual-type').value;
+      const dateStr = document.getElementById('manual-date').value;
+      const timeStr = document.getElementById('manual-time').value;
+
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const dateObj = new Date(year, month - 1, day, hours, minutes, 0);
+
+      await window.secureStorage.addRecord({
+        type,
+        timestamp: dateObj.getTime(),
+        payload: { lat: null, lng: null, distanceMeters: null, inClinicRadius: false, note: `Registro manual: ${reason.trim()}` },
+        source: 'MANUAL',
+        reason: reason.trim()
+      });
+    }
 
     document.getElementById('manual-entry-modal').classList.remove('active');
     await this.refreshData();
@@ -652,6 +769,7 @@ class AppController {
 
     // 6. Botones de modales de registro manual y edición
     document.getElementById('btn-open-manual-entry').addEventListener('click', () => this.openManualEntryModal());
+    document.getElementById('manual-mode').addEventListener('change', (e) => this.updateManualEntryModeUI(e.target.value));
     document.getElementById('btn-save-manual').addEventListener('click', () => this.saveManualEntry());
     document.getElementById('btn-save-edit').addEventListener('click', () => this.saveEditEntry());
     document.getElementById('btn-delete-edit').addEventListener('click', () => this.deleteCurrentEditEntry());
